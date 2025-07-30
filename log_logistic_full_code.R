@@ -12,7 +12,7 @@
 #                                                 #
 # Shota Gugushvili                                #
 #                                                 #
-# 3 April 2025                                    #
+# 30 July 2025                                    #
 ###################################################
 
 ################################################################################
@@ -75,10 +75,14 @@ options(mc.cores = 4,  # Use 4 cores
 
 # Change accordingly on your computer
 
-setwd("~/Documents/GitHub/conceptual_framework_ii")
+setwd("~/Documents/GitHub/frontiers2")
 
 wd <- getwd()
 wd
+
+## Folders to save figures and output
+
+# Create folders figures_brms and output in your working directory
 
 ## Data
 
@@ -132,6 +136,9 @@ ggplot(data = pca_comps, aes(x = PC1, y = PC2, label = geno_copy)) +
   xlab("PC1 (23.39%)") +
   ylab("PC2 (14.35%)")
 
+# Create folder called figures_brms in your working directory beforehand
+# Then save figures
+
 ggsave(filename = "genotypes_pca.png",
        path = paste0(wd,"/figures_brms"),
        width = 24,
@@ -180,7 +187,7 @@ data_small_subsampled <- data_small %>%
 
 # Asym: right asymptote
 # asym: left asymptote (taken 0)
-# xmid: x-value for which the response is (Asym+asym)/2
+# xmid: x-value for which the response is (Asym + asym) / 2
 # slope: slope parameter on x-axis
 
 # Work with log-parameters
@@ -273,8 +280,8 @@ fixef_brms
 # Then write csv files
 
 write.csv(x = fixef_brms,
-         file = paste0(wd, "/output/", "fixef.csv")
-         )
+          file = paste0(wd, "/output/", "fixef.csv")
+          )
 
 ranef_brms_geno_logAsym <- as.data.frame(ranef(fit_brms, group = "geno")$geno[ , , "logAsym_Intercept"])
 ranef_brms_geno_logtmid <- as.data.frame(ranef(fit_brms, group = "geno")$geno[ , , "logtmid_Intercept"])
@@ -292,49 +299,24 @@ write.csv(x = ranef_brms_geno_logslope,
           file = paste0(wd, "/output/", "ranef_geno_logslope.csv")
           )
 
-## Visualise interactions via tidybayes
+################################################################################
 
-# http://mjskay.github.io/tidybayes/articles/tidy-brms.html
+## Tidy draws
 
-# Get parameter names
+# Speed gain later on
 
-# get_variables(fit_brms)
+fit_brms_tidy <- fit_brms %>%
+  tidy_draws()
 
-# Compute credible intervals for interaction parameters and pick significant interactions
+# Some cleanup
 
-logAsym_geno_Env_intervals <- fit_brms %>%
-  gather_draws(`r_geno:Env__logAsym`[condition,term]) %>%
-  median_qi() %>%
-  filter(!((.lower < 0) & (.upper > 0))) %>%
-  select(condition, .value, .lower, .upper)
+# rm(fit_brms)
+# rm(data)
+# rm(data_small)
 
-write.csv(x = logAsym_geno_Env_intervals,
-          file = paste0(wd, "/output/", "logAsym_geno_Env_intervals.csv")
-          )
+## Plot intervals for random effect sd's and variances
 
-logtmid_geno_Env_intervals <- fit_brms %>%
-  gather_draws(`r_geno:Env__logtmid`[condition,term]) %>%
-  median_qi() %>%
-  filter(!((.lower < 0) & (.upper > 0))) %>%
-  select(condition, .value, .lower, .upper)
-
-write.csv(x = logtmid_geno_Env_intervals,
-          file = paste0(wd, "/output/", "logtmid_geno_Env_intervals.csv")
-          )
-
-logslope_geno_Env_intervals <- fit_brms %>%
-  gather_draws(`r_geno:Env__logslope`[condition,term]) %>%
-  median_qi() %>%
-  filter(!((.lower < 0) & (.upper > 0))) %>%
-  select(condition, .value, .lower, .upper)
-
-write.csv(x = logslope_geno_Env_intervals,
-          file = paste0(wd, "/output/", "logslope_geno_Env_intervals.csv")
-          )
-
-## Plot intervals
-
-fit_brms %>%
+fit_brms_tidy %>%
   gather_draws(`sd_Env__logAsym_Intercept`,
                `sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
@@ -366,9 +348,6 @@ fit_brms %>%
   facet_wrap(~ parameter, ncol = 2) +
   theme(axis.title.x = element_blank(), axis.title.y = element_blank())
 
-# Create folder called figures_brms in your working directory beforehand
-# Then save figures
-
 ggsave(filename = "interaction_intervals.png",
        path = paste0(wd,"/figures_brms"),
        width = 24,
@@ -377,7 +356,7 @@ ggsave(filename = "interaction_intervals.png",
        device = "png",
        bg = "white")
 
-fit_brms %>%
+fit_brms_tidy %>%
   gather_draws(`sd_Env__logAsym_Intercept`,
                `sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
@@ -405,7 +384,7 @@ ggsave(filename = "interaction_densities.png",
 
 ## Standard deviation ratios geno:Env / geno
 
-fit_brms %>%
+fit_brms_tidy %>%
   spread_draws(`sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
                `sd_geno__logtmid_Intercept`,
@@ -431,7 +410,7 @@ ggsave(filename = "sd_ratios_intervals.png",
        device = "png",
        bg = "white")
 
-fit_brms %>%
+fit_brms_tidy %>%
   spread_draws(`sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
                `sd_geno__logtmid_Intercept`,
@@ -460,7 +439,7 @@ ggsave(filename = "sd_ratios_densities.png",
 
 ## Variance ratios geno:Env / geno
 
-fit_brms %>%
+fit_brms_tidy %>%
   spread_draws(`sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
                `sd_geno__logtmid_Intercept`,
@@ -486,7 +465,7 @@ ggsave(filename = "var_ratios_intervals.png",
        device = "png",
        bg = "white")
 
-fit_brms %>%
+fit_brms_tidy %>%
   spread_draws(`sd_geno__logAsym_Intercept`,
                `sd_geno:Env__logAsym_Intercept`,
                `sd_geno__logtmid_Intercept`,
@@ -513,26 +492,616 @@ ggsave(filename = "var_ratios_densities.png",
 
 ################################################################################
 
-## Genotypic parameter estimates
+## Process interactions for logAsym via tidybayes
 
-# Compute summaries
+# Post-processing described in Kruschke, Section 20.1.1
 
-summaries_geno_logAsym <- fit_brms %>%
-  spread_draws(`r_geno__logAsym`[condition,term]) %>%
-  median_qi(.width = c(.95))
+# Extract interaction random effects for logAsym
 
-summaries_geno_logtmid <- fit_brms %>%
-  spread_draws(`r_geno__logtmid`[condition,term]) %>%
-  median_qi(.width = c(.95))
+logAsym_inter_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno:Env__logAsym`[condition,], b_logAsym_Intercept) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = condition,
+                       delim = "_",
+                       names = c("geno", "Env"),
+                       too_many = "merge",
+                       cols_remove = FALSE) %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
 
-summaries_geno_logslope <- fit_brms %>%
-  spread_draws(`r_geno__logslope`[condition,term]) %>%
-  median_qi(.width = c(.95))
+# Extract geno random effects
 
-summaries_geno_logAsym <- rename(summaries_geno_logAsym, genotype = condition)
-summaries_geno_logtmid <- rename(summaries_geno_logtmid, genotype = condition)
-summaries_geno_logslope <- rename(summaries_geno_logslope, genotype = condition)
+logAsym_geno_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno__logAsym`[geno,]) %>%
+  ungroup()
 
+# Extract Env random effects
+
+logAsym_Env_df <- fit_brms_tidy %>%
+  spread_draws(`r_Env__logAsym`[Env,]) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
+
+# Compute cell means for logAsym
+
+logAsym_df <- logAsym_inter_df %>%
+  mutate(mu = NA, mu_geno = NA, mu_Env = NA)
+
+n_geno <- length(geno_names) # Number of genotypes; geno_names defined above 
+Env_names <- levels(data_small_subsampled$Env) # Extract unique environment names
+n_Env <- length(Env_names) # Number of environments
+
+for (i in 1:n_geno) {
+  for (j in 1:n_Env) {
+    # Get the genotype effect
+    geno_effect <- logAsym_geno_df %>%
+      filter(geno == geno_names[i]) %>%
+      pull(`r_geno__logAsym`)
+    
+    # Get the environment effect
+    Env_effect <- logAsym_Env_df %>%
+      filter(Env == Env_names[j]) %>%
+      pull(`r_Env__logAsym`)
+    
+    # Add the intercept and interaction term later on
+    
+    # Compute cell means
+    logAsym_df$mu[logAsym_df$geno == geno_names[i] & logAsym_df$Env == Env_names[j]] <-
+      geno_effect + Env_effect
+  }
+}
+
+# Add the intercept and interaction term to the cell means
+
+logAsym_df <- logAsym_df %>%
+  mutate(mu = mu + b_logAsym_Intercept + `r_geno:Env__logAsym`)
+
+# Compute per draw marginal means for geno and Env
+# Next compute adjusted geno, Env and geno:Env effects
+
+logAsym_df <- logAsym_df %>%
+  group_by(.draw, geno) %>%
+  mutate(mu_geno = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw, Env) %>%
+  mutate(mu_Env = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw) %>%
+  mutate(mu_grand = mean(mu)) %>%
+  ungroup() %>%
+  mutate(geno_prime = mu_geno - mu_grand,
+         Env_prime = mu_Env - mu_grand,
+         genoEnv_prime = mu - mu_geno - mu_Env + mu_grand)
+
+# Save results
+
+write.csv(x = logAsym_df,
+          file = paste0(wd, "/output/", "logAsym_df.csv")
+          )
+
+# Compute credible intervals for interaction parameters and identify significant interactions
+
+logAsym_geno_Env_intervals <- logAsym_df %>%
+  group_by(geno, Env) %>%
+  summarise(
+    lower = quantile(genoEnv_prime, probs = 0.025),
+    upper = quantile(genoEnv_prime, probs = 0.975),
+    significant = ifelse(lower > 0 | upper < 0, 1, 0),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("location", "year"),
+                       cols_remove = FALSE) %>%
+  rename(genotype = geno)
+
+write.csv(x = logAsym_geno_Env_intervals,
+          file = paste0(wd, "/output/", "logAsym_geno_Env_intervals.csv")
+          )
+
+# logAsym_geno_Env_intervals <- read.csv(file = paste0(wd, "/output/", "logAsym_geno_Env_intervals.csv"),
+#                                         stringsAsFactors = FALSE)
+
+# Summarise interactions by location and genotype
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location) %>%
+  summarize(n = n())
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(genotype) %>%
+  summarize(n = n()) %>%
+  ungroup()  %>%
+  mutate(genotype = as.factor(genotype)) %>%
+  mutate(genotype = fct_reorder(genotype, n)) %>%
+  ggplot(aes(genotype, n)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "frequency",
+       x = "genotype")
+
+ggsave(filename = "logAsym_geno_interaction_frequencies.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 18,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(genotype) %>%
+  summarize(n = n()) %>%
+  ungroup()  %>%
+  mutate(genotype = as.factor(genotype)) %>%
+  mutate(genotype = fct_reorder(genotype, n)) %>%
+  ggplot(aes(genotype, 100 * n / 124)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "percentage",
+       x = "genotype")
+
+ggsave(filename = "logAsym_geno_interaction_frequencies2.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 18,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location, year) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(location = as.factor(location)) %>%
+  ggplot(aes(year, n, fill = location)) +
+  geom_col() +
+  scale_fill_viridis_d(option = "plasma") +
+  coord_flip() +
+  labs(y = "frequency",
+       x = "year") +
+  theme(legend.position = "right") +
+  facet_wrap(~ location)
+
+ggsave(filename = "logAsym_year_interaction_frequencies.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 24,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location, year) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(location = as.factor(location)) %>%
+  ggplot(aes(year, 100 * n / 48)) +
+  # geom_col(position = "dodge") +
+  geom_col() +
+  # scale_fill_viridis_d(option = "plasma") +
+  coord_flip() +
+  labs(y = "percentage",
+       x = "year") +
+  # theme(legend.position = "right") +
+  facet_wrap(~ location, nrow = 1)
+
+ggsave(filename = "logAsym_year_interaction_frequencies2.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 24,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logAsym_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location, year) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(location = as.factor(location)) %>%
+  ggplot(aes(year, 100 * n / 48, colour = location)) +
+  geom_line() +
+  scale_color_viridis_d(option = "plasma") +
+  labs(y = "percentage",
+       x = "year") +
+  theme(legend.position = "none") +
+  facet_wrap(~ location, nrow = 2)
+
+ggsave(filename = "logAsym_year_interaction_frequencies3.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 24,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+################################################################################
+
+## Process interactions for logtmid
+
+# Follow steps above for logAsym
+
+logtmid_inter_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno:Env__logtmid`[condition,], b_logtmid_Intercept) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = condition,
+                       delim = "_",
+                       names = c("geno", "Env"),
+                       too_many = "merge",
+                       cols_remove = FALSE) %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
+
+logtmid_geno_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno__logtmid`[geno,]) %>%
+  ungroup()
+
+logtmid_Env_df <- fit_brms_tidy %>%
+  spread_draws(`r_Env__logtmid`[Env,]) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
+
+# Compute cell means for logtmid
+# Intercept added later on
+
+logtmid_df <- logtmid_inter_df %>%
+  mutate(mu = NA, mu_geno = NA, mu_Env = NA)
+
+for (i in 1:n_geno) {
+  for (j in 1:n_Env) {
+    # Get the genotype effect
+    geno_effect <- logtmid_geno_df %>%
+      filter(geno == geno_names[i]) %>%
+      pull(`r_geno__logtmid`)
+    
+    # Get the environment effect
+    Env_effect <- logtmid_Env_df %>%
+      filter(Env == Env_names[j]) %>%
+      pull(`r_Env__logtmid`)
+    
+    # Intercept and interaction term added later on
+    
+    # Compute cell means
+    logtmid_df$mu[logtmid_df$geno == geno_names[i] & logtmid_df$Env == Env_names[j]] <-
+      geno_effect + Env_effect
+  }
+}
+
+# Add the intercept and interaction term to the cell means
+
+logtmid_df <- logtmid_df %>%
+  mutate(mu = mu + b_logtmid_Intercept + `r_geno:Env__logtmid`)
+
+# Compute per draw marginal means for geno and Env
+
+logtmid_df <- logtmid_df %>%
+  group_by(.draw, geno) %>%
+  mutate(mu_geno = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw, Env) %>%
+  mutate(mu_Env = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw) %>%
+  mutate(mu_grand = mean(mu)) %>%
+  ungroup() %>%
+  mutate(geno_prime = mu_geno - mu_grand,
+         Env_prime = mu_Env - mu_grand,
+         genoEnv_prime = mu - mu_geno - mu_Env + mu_grand)
+
+# Save results
+
+write.csv(x = logtmid_df,
+          file = paste0(wd, "/output/", "logtmid_df.csv")
+          )
+
+# Compute credible intervals for interaction parameters and identify significant interactions
+
+logtmid_geno_Env_intervals <- logtmid_df %>%
+  group_by(geno, Env) %>%
+  summarise(
+    lower = quantile(genoEnv_prime, probs = 0.025),
+    upper = quantile(genoEnv_prime, probs = 0.975),
+    significant = ifelse(lower > 0 | upper < 0, 1, 0),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("location", "year"),
+                       cols_remove = FALSE) %>%
+  rename(genotype = geno)
+
+write.csv(x = logtmid_geno_Env_intervals,
+          file = paste0(wd, "/output/", "logtmid_geno_Env_intervals.csv")
+          )
+
+# logtmid_geno_Env_intervals <- read.csv(file = paste0(wd, "/output/", "logtmid_geno_Env_intervals.csv"),
+#                                          stringsAsFactors = FALSE)
+
+# Summarise interactions by location and genotype
+
+logtmid_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location) %>%
+  summarize(n = n())
+
+logtmid_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(genotype) %>%
+  summarize(n = n()) %>%
+  ungroup()  %>%
+  mutate(genotype = as.factor(genotype)) %>%
+  mutate(genotype = fct_reorder(genotype, n)) %>%
+  ggplot(aes(genotype, n)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "frequency",
+       x = "genotype")
+
+ggsave(filename = "logtmid_geno_interaction_frequencies.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 18,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logtmid_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(genotype) %>%
+  summarize(n = n()) %>%
+  ungroup()  %>%
+  mutate(genotype = as.factor(genotype)) %>%
+  mutate(genotype = fct_reorder(genotype, n)) %>%
+  ggplot(aes(genotype, 100 * n / 124)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "percentage",
+       x = "genotype")
+
+ggsave(filename = "logtmid_geno_interaction_frequencies2.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 18,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logtmid_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location, year) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(location = as.factor(location)) %>%
+  ggplot(aes(year, n, fill = location)) +
+  geom_col() +
+  scale_fill_viridis_d(option = "plasma") +
+  coord_flip() +
+  labs(y = "frequency",
+       x = "year") +
+  theme(legend.position = "right") +
+  facet_wrap(~ location)
+
+ggsave(filename = "logtmid_year_interaction_frequencies.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 24,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+logtmid_geno_Env_intervals %>%
+  filter(significant == 1) %>%
+  group_by(location, year) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(location = as.factor(location)) %>%
+  ggplot(aes(year, 100 * n / 48)) +
+  # geom_col(position = "dodge") +
+  geom_col() +
+  # scale_fill_viridis_d(option = "plasma") +
+  coord_flip() +
+  labs(y = "percentage",
+       x = "year") +
+  # theme(legend.position = "right") +
+  facet_wrap(~ location, nrow = 1)
+
+ggsave(filename = "logtmid_year_interaction_frequencies2.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 24,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
+################################################################################
+
+## Process interactions for logslope
+
+# Follow steps above for logAsym
+
+logslope_inter_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno:Env__logslope`[condition,], b_logslope_Intercept) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = condition,
+                       delim = "_",
+                       names = c("geno", "Env"),
+                       too_many = "merge",
+                       cols_remove = FALSE) %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
+
+logslope_geno_df <- fit_brms_tidy %>%
+  spread_draws(`r_geno__logslope`[geno,]) %>%
+  ungroup()
+
+logslope_Env_df <- fit_brms_tidy %>%
+  spread_draws(`r_Env__logslope`[Env,]) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("loc", "year"),
+                       cols_remove = FALSE)
+
+# Compute cell means for logslope
+
+logslope_df <- logslope_inter_df %>%
+  mutate(mu = NA, mu_geno = NA, mu_Env = NA)
+
+for (i in 1:n_geno) {
+  for (j in 1:n_Env) {
+    # Get the genotype effect
+    geno_effect <- logslope_geno_df %>%
+      filter(geno == geno_names[i]) %>%
+      pull(`r_geno__logslope`)
+    
+    # Get the environment effect
+    Env_effect <- logslope_Env_df %>%
+      filter(Env == Env_names[j]) %>%
+      pull(`r_Env__logslope`)
+    
+    # Add intercept and interaction term later on
+    
+    # Compute cell means
+    logslope_df$mu[logslope_df$geno == geno_names[i] & logslope_df$Env == Env_names[j]] <-
+      geno_effect + Env_effect
+  }
+}
+
+# Add the intercept and interaction term to the cell means
+
+logslope_df <- logslope_df %>%
+  mutate(mu = mu + b_logslope_Intercept + `r_geno:Env__logslope`)
+
+# Compute per draw marginal means for geno and Env
+
+logslope_df <- logslope_df %>%
+  group_by(.draw, geno) %>%
+  mutate(mu_geno = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw, Env) %>%
+  mutate(mu_Env = mean(mu)) %>%
+  ungroup() %>%
+  group_by(.draw) %>%
+  mutate(mu_grand = mean(mu)) %>%
+  ungroup() %>%
+  mutate(geno_prime = mu_geno - mu_grand,
+         Env_prime = mu_Env - mu_grand,
+         genoEnv_prime = mu - mu_geno - mu_Env + mu_grand)
+
+# Save results
+
+write.csv(x = logslope_df,
+          file = paste0(wd, "/output/", "logslope_df.csv")
+          )
+
+# Compute credible intervals for interaction parameters and identify significant interactions
+
+logslope_geno_Env_intervals <- logslope_df %>%
+  group_by(geno, Env) %>%
+  summarise(
+    lower = quantile(genoEnv_prime, probs = 0.025),
+    upper = quantile(genoEnv_prime, probs = 0.975),
+    significant = ifelse(lower > 0 | upper < 0, 1, 0),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  separate_wider_delim(cols = Env,
+                       delim = "_",
+                       names = c("location", "year"),
+                       cols_remove = FALSE) %>%
+  rename(genotype = geno)
+
+write.csv(x = logslope_geno_Env_intervals,
+          file = paste0(wd, "/output/", "logslope_geno_Env_intervals.csv")
+          )
+
+################################################################################
+
+## Adjusted genotype main effects
+
+# logAsym
+
+# logAsym_df <- read_csv(paste0(wd, "/output/", "logAsym_df.csv"))
+
+summaries_geno_logAsym <- logAsym_df %>%
+  filter(Env == "Emerald_1983") %>%
+  group_by(geno) %>%
+  summarise(
+    logAsym = median(geno_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  rename(genotype = geno)
+
+# Save summaries
+
+write.csv(x = summaries_geno_logAsym,
+          file = paste0(wd, "/output/", "summaries_geno_logAsym.csv")
+          )
+
+# logtmid
+
+# logtmid_df <- read_csv(paste0(wd, "/output/", "logtmid_df.csv"))
+
+summaries_geno_logtmid <- logtmid_df %>%
+  filter(Env == "Emerald_1983") %>%
+  group_by(geno) %>%
+  summarise(
+    logtmid = median(geno_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  rename(genotype = geno)
+
+# Save summaries
+
+write.csv(x = summaries_geno_logtmid,
+          file = paste0(wd, "/output/", "summaries_geno_logtmid.csv")
+          )
+
+# logslope
+
+# logslope_df <- read_csv(paste0(wd, "/output/", "logslope_df.csv"))
+
+summaries_geno_logslope <- logslope_df %>%
+  filter(Env == "Emerald_1983") %>%
+  group_by(geno) %>%
+  summarise(
+    logslope = median(geno_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  rename(genotype = geno)
+
+# Save summaries
+
+write.csv(x = summaries_geno_logslope,
+          file = paste0(wd, "/output/", "summaries_geno_logslope.csv")
+          )
+  
 ## Import physiological parameters
 
 # Import APSIM parameters (provided by Daniela Bustos-Korts)
@@ -586,8 +1155,8 @@ logslope_corr <- data.frame(phys_par = Parameters_D2_pars,
 
 for (l in 1:length(Parameters_D2_pars)){
   cor_test_res <- cor.test(pull(Parameters_D2, Parameters_D2_pars[l]),
-                           pull(summaries_geno_logAsym, "r_geno__logAsym")
-                           )
+                           pull(summaries_geno_logAsym, "logAsym")
+  )
   
   logAsym_corr[l, 3] <- cor_test_res$estimate
   logAsym_corr[l, 4] <- cor_test_res$conf.int[1]
@@ -596,7 +1165,7 @@ for (l in 1:length(Parameters_D2_pars)){
 
 for (l in 1:length(Parameters_D2_pars)){
   cor_test_res <- cor.test(pull(Parameters_D2, Parameters_D2_pars[l]),
-                           pull(summaries_geno_logtmid, "r_geno__logtmid")
+                           pull(summaries_geno_logtmid, "logtmid")
   )
   
   logtmid_corr[l, 3] <- cor_test_res$estimate
@@ -606,7 +1175,7 @@ for (l in 1:length(Parameters_D2_pars)){
 
 for (l in 1:length(Parameters_D2_pars)){
   cor_test_res <- cor.test(pull(Parameters_D2, Parameters_D2_pars[l]),
-                           pull(summaries_geno_logslope, "r_geno__logslope")
+                           pull(summaries_geno_logslope, "logslope")
   )
   
   logslope_corr[l, 3] <- cor_test_res$estimate
@@ -630,7 +1199,7 @@ par_corr %>%
   facet_wrap( ~ mod_par, ncol = 2) +
   xlab("parameter") +
   ylab("correlation") 
-  
+
 ggsave(filename = "par_corr.png",
        path = paste0(wd,"/figures_brms"),
        width = 24,
@@ -645,27 +1214,62 @@ ggsave(filename = "par_corr.png",
 
 # Compute posterior summaries
 
-summaries_Env_logAsym <- fit_brms %>%
-  spread_draws(`r_Env__logAsym`[condition,term]) %>%
-  median_qi(.width = c(.95))
+# logAsym_df <- read_csv(paste0(wd, "/output/", "logAsym_df.csv"))
+# logtmid_df <- read_csv(paste0(wd, "/output/", "logtmid_df.csv"))
+# logslope_df <- read_csv(paste0(wd, "/output/", "logslope_df.csv"))
 
-summaries_Env_logtmid <- fit_brms %>%
-  spread_draws(`r_Env__logtmid`[condition,term]) %>%
-  median_qi(.width = c(.95))
+summaries_Env_logAsym <- logAsym_df %>%
+  filter(geno == "g012") %>%
+  group_by(Env) %>%
+  summarise(
+    logAsym = median(Env_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup()
 
-summaries_Env_logslope <- fit_brms %>%
-  spread_draws(`r_Env__logslope`[condition,term]) %>%
-  median_qi(.width = c(.95))
+write.csv(x = summaries_Env_logAsym,
+          file = paste0(wd, "/output/", "summaries_Env_logAsym.csv")
+          )
 
-summaries_Env_logAsym <- rename(summaries_Env_logAsym, trial = condition)
-summaries_Env_logtmid <- rename(summaries_Env_logtmid, trial = condition)
-summaries_Env_logslope <- rename(summaries_Env_logslope, trial = condition)
+summaries_Env_logtmid <- logtmid_df %>%
+  filter(geno == "g012") %>%
+  group_by(Env) %>%
+  summarise(
+    logtmid = median(Env_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup()
+
+write.csv(x = summaries_Env_logtmid,
+          file = paste0(wd, "/output/", "summaries_Env_logtmid.csv")
+          )
+
+summaries_Env_logslope <- logslope_df %>%
+  filter(geno == "g012") %>%
+  group_by(Env) %>%
+  summarise(
+    logslope = median(Env_prime),
+    .groups = "keep"
+  ) %>%
+  ungroup()
+
+write.csv(x = summaries_Env_logslope,
+          file = paste0(wd, "/output/", "summaries_Env_logslope.csv")
+          )
+
+# summaries_Env_logAsym <- read_csv(paste0(wd, "/output/", "summaries_Env_logAsym.csv"))
+# summaries_Env_logtmid <- read_csv(paste0(wd, "/output/", "summaries_Env_logtmid.csv"))
+# summaries_Env_logslope <- read_csv(paste0(wd, "/output/", "summaries_Env_logslope.csv"))
+
+summaries_Env_logAsym <- rename(summaries_Env_logAsym, trial = Env)
+summaries_Env_logtmid <- rename(summaries_Env_logtmid, trial = Env)
+summaries_Env_logslope <- rename(summaries_Env_logslope, trial = Env)
 
 # Combine parameters in a single data frame
 
-Env_pars0 <- data.frame(logAsym = summaries_Env_logAsym$r_Env__logAsym,
-                        logtmid = summaries_Env_logtmid$r_Env__logtmid,
-                        logslope = summaries_Env_logslope$r_Env__logslope)
+Env_pars0 <- data.frame(logAsym = summaries_Env_logAsym$logAsym,
+                        logtmid = summaries_Env_logtmid$logtmid,
+                        logslope = summaries_Env_logslope$logslope)
 
 row.names(Env_pars0) <- summaries_Env_logAsym$trial
 
@@ -681,8 +1285,8 @@ kmeans3 <- kmeans(scale(Env_pars0), centers = 3, iter.max = 1000, nstart = 100)
 cluster_labels <- kmeans3$cluster # Placeholder
 
 cluster_labels[kmeans3$cluster == 1] <- 3 # Replacements
-cluster_labels[kmeans3$cluster == 2] <- 1
-cluster_labels[kmeans3$cluster == 3] <- 2
+cluster_labels[kmeans3$cluster == 2] <- 2
+cluster_labels[kmeans3$cluster == 3] <- 1
 
 ## Visualise clusters
 
@@ -731,7 +1335,7 @@ Env_pars_scatter <- Env_pars0 %>%
          trial = summaries_Env_logAsym$trial,
          loc = loc_year[, 1],
          year = loc_year[, 2]
-         )
+  )
 
 env_scatter3d <- plot_ly(Env_pars_scatter, x = ~log_Mmax, y = ~log_tmid, z = ~log_r,
                          type = "scatter3d",
@@ -854,128 +1458,6 @@ ggsave(filename = "group_effects.png",
 
 conditions_brms <- make_conditions(fit_brms, vars = c("geno", "Env"))
 
-## Summarise interactions by location and genotype
-
-# logAsym
-
-logAsym_geno_Env_intervals2 <- logAsym_geno_Env_intervals %>%
-  separate(condition, into = c("genotype", "location", "year"), sep = "_", remove = FALSE)
-
-logAsym_geno_Env_intervals2 %>%
-  group_by(location) %>%
-  summarize(n = n())
-
-logAsym_geno_Env_intervals2 %>%
-  group_by(genotype) %>%
-  summarize(n = n()) %>%
-  ungroup()  %>%
-  mutate(genotype = as.factor(genotype)) %>%
-  mutate(genotype = fct_reorder(genotype, n)) %>%
-  ggplot(aes(genotype, n)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  scale_y_continuous(expand = c(0, 0)) +
-  labs(y = "frequency",
-       x = "genotype")
-
-ggsave(filename = "logAsym_geno_interaction_frequencies.png",
-       path = paste0(wd,"/figures_brms"),
-       width = 24,
-       height = 18,
-       units = "cm",
-       device = "png",
-       bg = "white")
-
-logAsym_geno_Env_intervals2 %>%
-  group_by(genotype) %>%
-  summarize(n = n()) %>%
-  ungroup()  %>%
-  mutate(genotype = as.factor(genotype)) %>%
-  mutate(genotype = fct_reorder(genotype, n)) %>%
-  ggplot(aes(genotype, 100 * n / 124)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  scale_y_continuous(expand = c(0, 0)) +
-  labs(y = "percentage",
-       x = "genotype")
-
-ggsave(filename = "logAsym_geno_interaction_frequencies2.png",
-       path = paste0(wd,"/figures_brms"),
-       width = 24,
-       height = 18,
-       units = "cm",
-       device = "png",
-       bg = "white")
-
-logAsym_geno_Env_intervals2 %>%
-  group_by(location, year) %>%
-  summarize(n = n()) %>%
-  ungroup() %>%
-  mutate(location = as.factor(location)) %>%
-  ggplot(aes(year, n, fill = location)) +
-  geom_col() +
-  scale_fill_viridis_d(option = "plasma") +
-  coord_flip() +
-  labs(y = "frequency",
-       x = "year") +
-  theme(legend.position = "right") +
-  facet_wrap(~ location)
-
-ggsave(filename = "logAsym_year_interaction_frequencies.png",
-       path = paste0(wd,"/figures_brms"),
-       width = 24,
-       height = 24,
-       units = "cm",
-       device = "png",
-       bg = "white")
-
-logAsym_geno_Env_intervals2 %>%
-  group_by(location, year) %>%
-  summarize(n = n()) %>%
-  ungroup() %>%
-  mutate(location = as.factor(location)) %>%
-  ggplot(aes(year, 100 * n / 48)) +
-  # geom_col(position = "dodge") +
-  geom_col() +
-  # scale_fill_viridis_d(option = "plasma") +
-  coord_flip() +
-  labs(y = "percentage",
-       x = "year") +
-  # theme(legend.position = "right") +
-  facet_wrap(~ location, nrow = 1)
-
-ggsave(filename = "logAsym_year_interaction_frequencies2.png",
-       path = paste0(wd,"/figures_brms"),
-       width = 24,
-       height = 24,
-       units = "cm",
-       device = "png",
-       bg = "white")
-
-# logtmid
-
-logtmid_geno_Env_intervals2 <- logtmid_geno_Env_intervals %>%
-  separate(condition, into = c("genotype", "location", "year"), sep = "_", remove = FALSE)
-
-summary(logtmid_geno_Env_intervals2)
-
-logtmid_geno_Env_intervals2 %>%
-  group_by(location) %>%
-  summarize(n = n())
-
-logtmid_geno_Env_intervals2 %>%
-  group_by(genotype) %>%
-  summarize(n = n()) %>%
-  ungroup  %>%
-  mutate(genotype = as.factor(genotype)) %>%
-  mutate(genotype = fct_reorder(genotype, n)) %>%
-  ggplot(aes(genotype, n)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  scale_y_continuous(expand = c(0, 0)) +
-  labs(y = "frequency",
-       x = "genotype")
-
 ## Combinations with interaction: g012 and g199 
 
 # rm(data, data_small) # Some cleanup
@@ -995,17 +1477,17 @@ cond_eff_brms2 <- conditional_effects(fit_brms,
 # Plot fitted curves via ggplot: extract fitted values
 
 cond_eff_brms_df2 <- data.frame(fitted = cond_eff_brms2$dscaled$estimate__,
-                               dscaled = cond_eff_brms2$dscaled$dscaled,
-                               trial = as.character(cond_eff_brms2$dscaled$Env),
-                               geno = as_factor(cond_eff_brms2$dscaled$geno)
-                               )
+                                dscaled = cond_eff_brms2$dscaled$dscaled,
+                                trial = as.character(cond_eff_brms2$dscaled$Env),
+                                geno = as_factor(cond_eff_brms2$dscaled$geno)
+                                )
 
 data_small_subsampled2 <- data_small_subsampled %>%
   rename(trial = Env) %>%
   filter(geno %in% c("g012", "g199"), trial %in% c("Emerald_1983", "Yanco_1983"))
 
 cbbPalette <- c("#000000", "#D55E00")
-  
+
 cond_eff_brms_df2 %>%
   filter(trial %in% c("Emerald_1983", "Yanco_1983")) %>%
   ggplot() +
@@ -1030,7 +1512,7 @@ ggsave(filename = "fits_interaction.png",
 
 # Check credible intervals
 
-logAsym_geno_Env_intervals2 %>%
+logAsym_geno_Env_intervals %>%
   filter(genotype %in% c("g012", "g199"),
          location %in% c("Emerald", "Yanco"),
          year %in% c("1983"))
@@ -1116,7 +1598,9 @@ ggsave(filename = "fits_4loc.png",
 
 # Medoids of clusters
 
-et_medoid_indices <- medoids(D = factoextra::get_dist(Env_pars0), cl = as.vector(cluster_labels))
+et_medoid_indices <- medoids(D = factoextra::get_dist(Env_pars0, stand = TRUE),
+                             cl = as.vector(cluster_labels)
+                             )
 
 et_medoids <- rownames(Env_pars0)[et_medoid_indices]
 et_medoids
@@ -1182,18 +1666,23 @@ data_small %>%
 
 ## ETs for medoid genotype
 
+# summaries_geno_logAsym <- read_csv(paste0(wd, "/output/", "summaries_geno_logAsym.csv"))
+# summaries_geno_logtmid <- read_csv(paste0(wd, "/output/", "summaries_geno_logtmid.csv"))
+# summaries_geno_logslope <- read_csv(paste0(wd, "/output/", "summaries_geno_logslope.csv"))
+
 # Genotypic parameter estimates
 
-geno_pars0 <- data.frame(logAsym = summaries_geno_logAsym$r_geno__logAsym,
-                         logtmid = summaries_geno_logtmid$r_geno__logtmid,
-                         logslope = summaries_geno_logslope$r_geno__logslope
+geno_pars0 <- data.frame(logAsym = summaries_geno_logAsym$logAsym,
+                         logtmid = summaries_geno_logtmid$logtmid,
+                         logslope = summaries_geno_logslope$logslope
                          )
-
-geno_pars0
 
 # Medoid genotype
 
-geno_medoid_index <- medoids(D = factoextra::get_dist(geno_pars0), cl = rep(1, 48))
+geno_medoid_index <- medoids(D = factoextra::get_dist(geno_pars0, stand = TRUE),
+                             cl = rep(1, 48)
+                             )
+
 geno_medoid <- summaries_geno_logAsym$genotype[geno_medoid_index]
 geno_medoid
 
@@ -1220,7 +1709,7 @@ cond_eff_brms5 <- conditional_effects(fit_brms,
 
 # Plot fitted curves via ggplot: extract fitted values
 
-str(cond_eff_brms5)
+# str(cond_eff_brms5)
 
 cond_eff_brms_df5 <- data.frame(fitted = cond_eff_brms5$dscaled$estimate__,
                                 lower = cond_eff_brms5$dscaled$lower__,
@@ -1317,7 +1806,9 @@ cond_eff_brms_df6 %>%
 
 # Medoids of locations
 
-loc_medoid_indices <- medoids(D = factoextra::get_dist(Env_pars0), cl = rep(1:4, each = 31))
+loc_medoid_indices <- medoids(D = factoextra::get_dist(Env_pars0, stand = TRUE),
+                              cl = rep(1:4, each = 31)
+                              )
 
 loc_medoids <- rownames(Env_pars0)[loc_medoid_indices]
 
@@ -1387,6 +1878,14 @@ cond_eff_brms_df7 %>%
   xlab("time") +
   ylab("biomass")
 
+ggsave(filename = "fits_4loc_medoids_band.png",
+       path = paste0(wd,"/figures_brms"),
+       width = 24,
+       height = 18,
+       units = "cm",
+       device = "png",
+       bg = "white")
+
 cond_eff_brms_df7 %>%
   ggplot() +
   geom_ribbon(aes(x = dscaled, ymin = lower, ymax = upper),
@@ -1399,14 +1898,6 @@ cond_eff_brms_df7 %>%
   xlab("time") +
   ylab("biomass") +
   facet_wrap(~ trial)
-
-ggsave(filename = "fits_4loc_medoids.png",
-       path = paste0(wd,"/figures_brms"),
-       width = 24,
-       height = 18,
-       units = "cm",
-       device = "png",
-       bg = "white")
 
 data_small %>%
   filter(Env %in% loc_medoids) %>%
@@ -1435,10 +1926,10 @@ cond_eff_brms_df8 <- fit_brms %>%
   add_epred_draws(newdata = expand.grid(Env = loc_medoids,
                                         geno = NA,
                                         dscaled = seq(from = 0.1, to = 16.9, by = 0.7)
-                                        ),
-                  re_formula = ~ (1 | Env),
-                  allow_new_levels = TRUE,
-                  sample_new_levels = "uncertainty"
+  ),
+  re_formula = ~ (1 | Env),
+  allow_new_levels = TRUE,
+  sample_new_levels = "uncertainty"
   ) %>%
   summarize(across(.epred, lst(mean, q_low, q_hi), .names = "{.fn}"))
 
@@ -1584,7 +2075,7 @@ ggsave(filename = "fits_4loc_allyears.png",
 newdata_fitted_values <- data_small_subsampled %>%
   filter(geno %in% geno_names[1:4],
          Env %in% c("Emerald_1985", "Merredin_1992", "Narrabri_1999", "Yanco_2006")
-         ) %>%
+  ) %>%
   mutate(Env = as.character(Env), geno = as.character(geno))
 
 fitted_values <- fitted(fit_brms, newdata = newdata_fitted_values)
@@ -1608,5 +2099,8 @@ ggsave(filename = "residuals.png",
        units = "cm",
        device = "png",
        bg = "white")
+
+################################################################################
+
 
 
